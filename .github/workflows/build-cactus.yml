@@ -7,7 +7,7 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Setup Android SDK
+      - name: Setup Android SDK & NDK
         uses: android-actions/setup-android@v4
         with:
           packages: 'platform-tools'
@@ -16,51 +16,30 @@ jobs:
         run: |
           sdkmanager --install "ndk;26.1.10909125" "cmake;3.22.1"
 
-      - name: Clone and Build Cactus Directly with CMake
+      - name: Clone, Find Script, and Build Cactus
         run: |
-          # 1. Clone the repository and pin the working version
+          # 1. Clone the repository
           git clone https://github.com/cactus-compute/cactus.git
           cd cactus
-          git checkout v2.0.1
           
-          # 2. Find the CMakeLists.txt file
-          echo "--- Searching for CMakeLists.txt ---"
-          CMAKE_FILE=$(find . -name "CMakeLists.txt" -type f | grep -v ".git" | head -n 1)
-          
-          if [ -z "$CMAKE_FILE" ]; then
-            echo "❌ ERROR: CMakeLists.txt not found!"
-            exit 1
-          fi
-          
-          CMAKE_DIR=$(dirname "$CMAKE_FILE")
-          echo "✅ Found CMakeLists.txt in: $CMAKE_DIR"
-          
-          # 3. Set NDK path
+          # 2. Set the NDK path as required by the Cactus build system
           export ANDROID_NDK_HOME=$ANDROID_HOME/ndk/26.1.10909125
           
-          # 4. Run CMake directly to configure the build
-          echo "--- Configuring CMake ---"
-          cmake -B build-android -S "$CMAKE_DIR" \
-            -DCMAKE_TOOLCHAIN_FILE="$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake" \
-            -DANDROID_ABI=arm64-v8a \
-            -DANDROID_PLATFORM=android-21 \
-            -DCMAKE_BUILD_TYPE=Release
-            
-          # 5. Compile the C++ code
-          echo "--- Compiling C++ Engine ---"
-          cmake --build build-android --config Release --parallel
+          # 3. The official build script is located inside the android/ directory
+          echo "--- Running the official android/build.sh ---"
+          bash android/build.sh
           
-          # 6. Verify the .so file was created
-          echo "--- Finding generated .so files ---"
-          find . -name "*.so" -type f
+          # 4. Verify the compiled .so file exists
+          echo "--- Finding the generated .so file ---"
+          find . -name "libcactus_engine.so" -type f
 
       - name: Upload Cactus Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: cactus-android-lib
-          # Catch the .so file and the Kotlin files
+          # Upload the compiled engine AND the required Kotlin wrapper files
           path: |
-            cactus/**/*.so
+            cactus/android/libcactus_engine.so
             cactus/**/Cactus.kt
             cactus/**/CactusCallbacks.kt
 # CMake build update
