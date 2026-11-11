@@ -26,11 +26,12 @@ jobs:
         run: |
           git clone https://github.com/cactus-compute/cactus.git
           cd cactus
-          source ./setup
+          bash ./setup
+          export ANDROID_NDK_HOME=$ANDROID_HOME/ndk/26.1.10909125
           cactus build --android
 
       - name: Upload Cactus .so Library
         uses: actions/upload-artifact@v4
         with:
           name: cactus-native-lib
-          path: cactus/android/build/lib/libcactus.so
+          path: cactus/android/libcactus.so
