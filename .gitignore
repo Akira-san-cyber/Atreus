@@ -33,3 +33,7 @@ google-services.json
 
 # Android Profiling
 *.hprof
+*.apk
+*.zip
+android-sdk/
+jdk17/

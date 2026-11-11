@@ -3,12 +3,7 @@
   "image": "mcr.microsoft.com/devcontainers/base:ubuntu-22.04",
   "features": {
     "ghcr.io/devcontainers/features/java:1": {
-      "version": "17",
-      "jdkDistro": "tem"
-    },
-    "ghcr.io/devcontainers/features/android-sdk:1": {
-      "version": "latest",
-      "cmdlineToolsVersion": "latest"
+      "version": "17"
     }
   },
   "customizations": {
@@ -19,7 +14,5 @@
         "vscjava.vscode-gradle"
       ]
     }
-  },
-  "postCreateCommand": "yes | sdkmanager --licenses && sdkmanager 'platforms;android-35' 'build-tools;35.0.0' 'platform-tools'",
-  "remoteUser": "vscode"
+  }
 }

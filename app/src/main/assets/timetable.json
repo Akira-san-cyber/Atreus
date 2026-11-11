@@ -1,0 +1,8 @@
+[
+  {"day":"Mon","start":"09:00","end":"10:00","course":"Digital Signal Processing","room":"A-201"},
+  {"day":"Mon","start":"10:15","end":"11:15","course":"Embedded Systems","room":"Lab-3"},
+  {"day":"Tue","start":"09:00","end":"10:00","course":"Computer Networks","room":"B-105"},
+  {"day":"Wed","start":"11:30","end":"12:30","course":"Operating Systems","room":"A-110"},
+  {"day":"Thu","start":"14:00","end":"15:00","course":"VLSI Design","room":"Lab-1"},
+  {"day":"Fri","start":"09:00","end":"10:00","course":"Machine Learning","room":"C-301"}
+]
