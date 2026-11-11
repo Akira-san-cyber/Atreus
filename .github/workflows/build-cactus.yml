@@ -22,27 +22,41 @@ jobs:
         run: |
           sdkmanager --install "ndk;26.1.10909125" "cmake;3.22.1"
 
-      - name: Clone and Build Cactus Engine
+      - name: Clone and Build Cactus for Android
         run: |
-          # 1. Clone the main branch (no special tag needed)
-          git clone https://github.com/cactus-compute/cactus.git
+          # 1. Clone the repository
+          git clone https://github.com/cactus-compute/cactus
           cd cactus
-          
-          # 2. Setup the environment (installs the CLI tool)
+
+          # 2. Setup the environment
           source ./setup
+
+          # 3. Diagnostic: Locate the Android build script
+          echo "--- Top-level folders ---"
+          ls -d */
+
+          echo "--- Searching for Android build script ---"
+          SCRIPT=$(find . -name "*.sh" -not -path "./.git/*" | grep -i android | grep -i build | head -1 || true)
           
-          # 3. Set NDK path and build using the official command
-          export ANDROID_NDK_HOME=$ANDROID_HOME/ndk/26.1.10909125
+          if [ -z "$SCRIPT" ]; then
+            echo "❌ ERROR: No Android build script found in the repository."
+            exit 1
+          fi
+          
+          echo "✅ Found build script at: $SCRIPT"
+
+          # 4. Execute the build script directly
           echo "--- Starting C++ Compilation ---"
-          cactus build --android
-          
-          # 4. Locate the generated .so file (it might be libcactus.so or libcactus_engine.so)
+          export ANDROID_NDK_HOME=$ANDROID_HOME/ndk/26.1.10909125
+          bash "$SCRIPT"
+
+          # 5. Locate the generated .so file
           echo "--- Searching for compiled .so files ---"
-          find . -name "*.so" -type f
+          find . -name "libcactus*" -type f
 
       - name: Upload Cactus .so Library
         uses: actions/upload-artifact@v4
         with:
           name: cactus-native-lib
-          # Use wildcards to catch the .so file wherever it was generated
-          path: cactus/**/*.so
+          # Use wildcards to grab the .so file no matter its exact name or location
+          path: cactus/**/libcactus*.so
