@@ -22,43 +22,30 @@ jobs:
         run: |
           sdkmanager --install "ndk;26.1.10909125" "cmake;3.22.1"
 
-      - name: Clone, Verify, and Build Cactus
+      - name: Clone, Checkout Release, and Build Cactus
         run: |
-          # 1. Clone with full depth (no --depth 1) to ensure all folders are fetched
-          git clone --recursive https://github.com/cactus-compute/cactus.git
+          # 1. Clone the repository
+          git clone https://github.com/cactus-compute/cactus.git
           cd cactus
 
-          # 2. Verify the android folder exists
-          echo "--- Checking for android folder ---"
-          if [ -d "android" ]; then
-            echo "✅ android folder found."
-            ls -la android/
-          else
-            echo "❌ ERROR: android folder is missing! Listing root directory:"
-            ls -la
-            exit 1
-          fi
+          # 2. Fetch tags and checkout the latest stable release
+          git fetch --tags
+          echo "--- Checking out v1.14 ---"
+          git checkout v1.14
 
-          # 3. Set NDK path
+          # 3. Verify the android directory exists (it should now)
+          echo "--- Verifying android/ directory ---"
+          ls -la android/
+
+          # 4. Setup environment and build
           export ANDROID_NDK_HOME=$ANDROID_HOME/ndk/26.1.10909125
-
-          # 4. Find and execute the build script from its actual location
-          echo "--- Searching for build.sh ---"
-          BUILD_SCRIPT=$(find . -type f -name "build.sh" | head -1)
-          
-          if [ -z "$BUILD_SCRIPT" ]; then
-            echo "ERROR: Could not find build.sh anywhere in the repository!"
-            exit 1
-          fi
-          
-          echo "Found build script at: $BUILD_SCRIPT"
-          echo "--- Starting C++ Compilation ---"
-          # Use execdir to run the script inside its own directory
-          find . -name "build.sh" -execdir bash {} \;
+          source ./setup
+          echo "--- Building Cactus for Android ---"
+          cactus build --android
 
       - name: Upload Cactus .so Library
         uses: actions/upload-artifact@v4
         with:
           name: cactus-native-lib
-          # The output is libcactus_engine.so
-          path: cactus/**/*.so
+          # The output is libcactus.so (based on official docs)
+          path: cactus/android/libcactus.so
