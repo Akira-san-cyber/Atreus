@@ -22,27 +22,25 @@ jobs:
         run: |
           sdkmanager --install "ndk;26.1.10909125" "cmake;3.22.1"
 
-      - name: Clone, Verify, and Build Cactus
+      - name: Clone Cactus and Inspect Structure
         run: |
-          # Recursively clone to fetch submodules
-          git clone --recursive https://github.com/cactus-compute/cactus.git
-          
-          # Move into the cloned directory
+          git clone https://github.com/cactus-compute/cactus.git
           cd cactus
-          
-          # List contents to verify the android folder exists before building
-          echo "--- Verifying android/ directory ---"
-          ls -la android/
-          
-          # Set the environment variable for NDK
+          echo "--- ROOT DIRECTORY CONTENTS ---"
+          ls -la
+          echo "--- SEARCHING FOR BUILD FILES ---"
+          find . -maxdepth 3 -name "build.sh" -o -name "CMakeLists.txt" | head -20
+
+      - name: Build Cactus via Official Command
+        run: |
+          cd cactus
           export ANDROID_NDK_HOME=$ANDROID_HOME/ndk/26.1.10909125
-          
-          # Execute the official build script
-          bash android/build.sh
+          source ./setup
+          cactus build --android
 
       - name: Upload Cactus .so Library
         uses: actions/upload-artifact@v4
         with:
           name: cactus-native-lib
-          # The correct output path based on official documentation
-          path: cactus/android/libcactus_engine.so
+          # Using wildcards (**) to find the .so file wherever it is generated
+          path: cactus/**/libcactus_engine.so
