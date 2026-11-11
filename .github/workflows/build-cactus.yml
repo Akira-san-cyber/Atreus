@@ -32,24 +32,26 @@ jobs:
           # 2. Run setup to install dependencies
           source ./setup
           
-          # 3. Automatically find the 'cactus' executable file
-          echo "--- Searching for Cactus CLI executable ---"
-          CLI_PATH=$(find . -type f -name "cactus" | head -n 1)
-          
-          if [ -z "$CLI_PATH" ]; then
-            echo "❌ ERROR: Could not find the 'cactus' executable anywhere!"
-            exit 1
-          fi
-          
-          echo "✅ Found Cactus CLI at: $CLI_PATH"
-          chmod +x "$CLI_PATH"
-
-          # 4. Set NDK path and build
           export ANDROID_NDK_HOME=$ANDROID_HOME/ndk/26.1.10909125
-          echo "--- Building Cactus for Android ---"
-          "$CLI_PATH" build --android
+          
+          echo "--- Attempting to run Cactus Build ---"
+          
+          # 3. Try every possible way to run the CLI
+          if command -v cactus &> /dev/null; then
+            echo "✅ Found 'cactus' on system PATH"
+            cactus build --android
+          elif [ -f ".venv/bin/cactus" ]; then
+            echo "✅ Found 'cactus' in .venv/bin/"
+            ./.venv/bin/cactus build --android
+          elif [ -f "venv/bin/cactus" ]; then
+            echo "✅ Found 'cactus' in venv/bin/"
+            ./venv/bin/cactus build --android
+          else
+            echo "⚠️ Could not find 'cactus' executable. Trying Python module fallback..."
+            python -m cactus build --android
+          fi
 
-          # 5. Find the generated files
+          # 4. Find the generated files
           echo "--- Finding generated .so files ---"
           find . -name "libcactus*.so" -type f
 
