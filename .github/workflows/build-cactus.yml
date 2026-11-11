@@ -4,8 +4,16 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Code
+      - name: Checkout Atreus Code
         uses: actions/checkout@v4
+
+      - name: Checkout Cactus Repository
+        uses: actions/checkout@v4
+        with:
+          repository: 'cactus-compute/cactus'
+          path: 'cactus-repo'
+          # Explicitly fetch the main branch to get the latest code
+          ref: 'main'
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -22,25 +30,28 @@ jobs:
         run: |
           sdkmanager --install "ndk;26.1.10909125" "cmake;3.22.1"
 
-      - name: Clone, Setup, and Build Cactus
+      - name: Verify Cactus Directory Structure
         run: |
-          # Clone the repository
-          git clone https://github.com/cactus-compute/cactus.git
-          cd cactus
-          
-          # Verify the android directory exists before building
-          ls -la android/ || { echo "ERROR: android directory is missing!"; exit 1; }
-          
-          # Setup the environment (installs the CLI)
-          source ./setup
-          
-          # Build using the official command
+          # The Cactus code should be in 'cactus-repo' now
+          cd cactus-repo
+          echo "--- Verifying android/ directory ---"
+          # List the contents to confirm build.sh is there
+          ls -la android/
+          if [ ! -f "android/build.sh" ]; then
+            echo "ERROR: android/build.sh not found! Repository structure might have changed."
+            exit 1
+          fi
+
+      - name: Build Cactus Engine
+        run: |
+          cd cactus-repo
           export ANDROID_NDK_HOME=$ANDROID_HOME/ndk/26.1.10909125
-          cactus build --android
+          # Use the build script directly; it's more reliable for CI
+          bash android/build.sh
 
       - name: Upload Cactus .so Library
         uses: actions/upload-artifact@v4
         with:
           name: cactus-native-lib
-          # The output is libcactus_engine.so based on official docs
-          path: cactus/android/libcactus_engine.so
+          # Based on official docs, the output is libcactus_engine.so
+          path: cactus-repo/android/libcactus_engine.so
