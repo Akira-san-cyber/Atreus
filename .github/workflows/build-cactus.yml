@@ -22,9 +22,14 @@ jobs:
         run: |
           sdkmanager --install "ndk;26.1.10909125" "cmake;3.22.1"
 
-      - name: Clone and Build Cactus via NDK Script
+      - name: Clone Cactus Repository
         run: |
           git clone https://github.com/cactus-compute/cactus.git
+          cd cactus
+          ls -la android/  # Verify the build script is present
+
+      - name: Build Cactus via NDK Script
+        run: |
           cd cactus
           export ANDROID_NDK_HOME=$ANDROID_HOME/ndk/26.1.10909125
           bash android/build.sh
@@ -33,4 +38,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: cactus-native-lib
-          path: cactus/android/**/*.so
+          path: cactus/android/libcactus.so
