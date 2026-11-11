@@ -1,4 +1,4 @@
-name: Build Cactus C++ Engine
+name: Build Cactus Engine
 on: [workflow_dispatch]
 jobs:
   build:
@@ -13,23 +13,19 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v4
-        with:
-          packages: 'platform-tools'
-
-      - name: Install NDK and CMake
+      - name: Install Android NDK & CMake
         run: |
           sdkmanager --install "ndk;26.1.10909125" "cmake;3.22.1"
 
-      - name: Grant Execute Permission to Gradle
-        run: chmod +x gradlew
+      - name: Clone and Build Cactus
+        run: |
+          git clone https://github.com/cactus-compute/cactus.git
+          cd cactus
+          source ./setup
+          cactus build --android
 
-      - name: Build APK with C++ Engine
-        run: ./gradlew assembleDebug --no-daemon
-
-      - name: Upload APK Artifact
+      - name: Upload Cactus .so Library
         uses: actions/upload-artifact@v4
         with:
-          name: atreus-cactus-apk
-          path: app/build/outputs/apk/debug/app-debug.apk
+          name: cactus-native-lib
+          path: cactus/android/build/lib/libcactus.so
