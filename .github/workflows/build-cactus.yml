@@ -22,41 +22,35 @@ jobs:
         run: |
           sdkmanager --install "ndk;26.1.10909125" "cmake;3.22.1"
 
-      - name: Clone and Build Cactus for Android
+      - name: Clone, Checkout v2.0.1, and Build Cactus
         run: |
           # 1. Clone the repository
-          git clone https://github.com/cactus-compute/cactus
+          git clone https://github.com/cactus-compute/cactus.git
           cd cactus
-
-          # 2. Setup the environment
+          
+          # 2. Checkout the working release
+          git checkout v2.0.1
+          
+          # 3. Setup the environment and build
           source ./setup
-
-          # 3. Diagnostic: Locate the Android build script
-          echo "--- Top-level folders ---"
-          ls -d */
-
-          echo "--- Searching for Android build script ---"
-          SCRIPT=$(find . -name "*.sh" -not -path "./.git/*" | grep -i android | grep -i build | head -1 || true)
-          
-          if [ -z "$SCRIPT" ]; then
-            echo "❌ ERROR: No Android build script found in the repository."
-            exit 1
-          fi
-          
-          echo "✅ Found build script at: $SCRIPT"
-
-          # 4. Execute the build script directly
-          echo "--- Starting C++ Compilation ---"
           export ANDROID_NDK_HOME=$ANDROID_HOME/ndk/26.1.10909125
-          bash "$SCRIPT"
+          echo "--- Building Cactus for Android ---"
+          cactus build --android
 
-          # 5. Locate the generated .so file
-          echo "--- Searching for compiled .so files ---"
-          find . -name "libcactus*" -type f
+      - name: Locate Output Files
+        run: |
+          cd cactus
+          echo "--- Generated .so file ---"
+          ls -la android/libcactus_engine.so
+          echo "--- Kotlin wrapper files ---"
+          find . -name "Cactus*.kt" -type f
 
-      - name: Upload Cactus .so Library
+      - name: Upload Cactus Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: cactus-native-lib
-          # Use wildcards to grab the .so file no matter its exact name or location
-          path: cactus/**/libcactus*.so
+          name: cactus-android-lib
+          # This grabs the compiled library AND the required Kotlin files
+          path: |
+            cactus/android/libcactus_engine.so
+            cactus/**/Cactus.kt
+            cactus/**/CactusCallbacks.kt
