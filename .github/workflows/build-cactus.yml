@@ -33,20 +33,11 @@ jobs:
           source ./setup
           export ANDROID_NDK_HOME=$ANDROID_HOME/ndk/26.1.10909125
 
-          # 3. Find the CLI executable (ignoring the .git folder)
-          CLI=$(find . -path ./.git -prune -o -type f -name "cactus" -print | head -n 1)
-          echo "Cactus CLI found at: $CLI"
-          if [ -z "$CLI" ]; then
-            echo "Cactus CLI not found in the repository!"
-            exit 1
-          fi
-          chmod +x "$CLI"
-
-          # 4. Run the build command directly
+          # 3. Run the build command directly from the virtual environment
           echo "--- Building Cactus for Android ---"
-          "$CLI" build --android
+          ./venv/bin/cactus build --android
 
-          # 5. Verify the output files exist
+          # 4. Verify the output files exist
           echo "--- Finding generated .so and Kotlin files ---"
           find . -name "libcactus*" -type f
           find . -name "Cactus*.kt" -type f
