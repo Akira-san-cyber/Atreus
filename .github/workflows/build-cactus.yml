@@ -4,7 +4,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Atreus Code
+      - name: Checkout Code
         uses: actions/checkout@v4
 
       - name: Set up JDK 17
@@ -22,25 +22,23 @@ jobs:
         run: |
           sdkmanager --install "ndk;26.1.10909125" "cmake;3.22.1"
 
-      - name: Clone, Setup, and Build Cactus
+      - name: Clone and Build Cactus Engine
         run: |
-          # 1. Clone the repository
-          git clone https://github.com/cactus-compute/cactus.git
-          
-          # 2. Enter the cloned directory
+          # 1. Recursively clone the repository to ensure all submodules are present
+          git clone --recursive https://github.com/cactus-compute/cactus.git
           cd cactus
-          
-          # 3. Setup the environment (installs the cactus CLI tool)
-          source ./setup
-          
-          # 4. Build using the official command
-          echo "--- Building Cactus for Android ---"
+
+          # 2. Set the NDK environment variable
           export ANDROID_NDK_HOME=$ANDROID_HOME/ndk/26.1.10909125
-          cactus build --android
+
+          # 3. Navigate directly to the android directory and run the official build script
+          echo "--- Navigating to android directory and building ---"
+          cd android
+          bash build.sh
 
       - name: Upload Cactus .so Library
         uses: actions/upload-artifact@v4
         with:
           name: cactus-native-lib
-          # The official build output is android/libcactus_engine.so
+          # The output from the build script is libcactus_engine.so
           path: cactus/android/libcactus_engine.so
