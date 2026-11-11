@@ -24,8 +24,8 @@ jobs:
 
       - name: Clone, Verify and Build Cactus
         run: |
-          # Recursively clone all submodules (fixes missing native files)
-          git clone --recursive https://github.com/cactus-compute/cactus.git
+          # Deep clone the repository to ensure all directories are fetched
+          git clone --depth 1 https://github.com/cactus-compute/cactus.git
           cd cactus
           echo "--- Verifying android/ directory ---"
           ls -la android/
@@ -37,5 +37,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: cactus-native-lib
-          # Correct output path based on official docs
-          path: cactus/android/libcactus.so
+          # Correct output path based on official docs: libcactus_engine.so
+          path: cactus/android/libcactus_engine.so
