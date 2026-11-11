@@ -22,26 +22,38 @@ jobs:
         run: |
           sdkmanager --install "ndk;26.1.10909125" "cmake;3.22.1"
 
-      - name: Clone, Verify, and Build Cactus
+      - name: Clone and Inspect Repository
         run: |
-          # 1. Clone the repository from the main branch
           git clone --recursive https://github.com/cactus-compute/cactus.git
           cd cactus
-          
-          # 2. Verify the build script exists
-          echo "--- Verifying android/build.sh ---"
-          ls -la android/build.sh
-          
-          # 3. Set the NDK environment variable
+          echo "--- Root directory contents ---"
+          ls -la
+          echo "--- Searching for build.sh ---"
+          find . -name "build.sh" -type f
+          echo "--- Searching for Android CMakeLists.txt ---"
+          find . -name "CMakeLists.txt" -type f | grep -i android || true
+
+      - name: Build Cactus (Auto-detect script)
+        run: |
+          cd cactus
           export ANDROID_NDK_HOME=$ANDROID_HOME/ndk/26.1.10909125
           
-          # 4. Run the official Android build script directly
-          echo "--- Building C++ Engine ---"
-          bash android/build.sh
+          if [ -f "android/build.sh" ]; then
+            echo "Found android/build.sh, building..."
+            bash android/build.sh
+          elif [ -f "cactus-engine/build.sh" ]; then
+            echo "Found cactus-engine/build.sh, building..."
+            bash cactus-engine/build.sh
+          elif [ -f "scripts/android/build.sh" ]; then
+            echo "Found scripts/android/build.sh, building..."
+            bash scripts/android/build.sh
+          else
+            echo "ERROR: Could not find any Android build script. Please check the repository structure."
+            exit 1
+          fi
 
       - name: Upload Cactus .so Library
         uses: actions/upload-artifact@v4
         with:
           name: cactus-native-lib
-          # The output is generated as libcactus.so inside the android folder
-          path: cactus/android/*.so
+          path: cactus/**/libcactus_engine.so
