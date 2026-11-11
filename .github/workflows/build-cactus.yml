@@ -22,38 +22,28 @@ jobs:
         run: |
           sdkmanager --install "ndk;26.1.10909125" "cmake;3.22.1"
 
-      - name: Clone and Inspect Repository
+      - name: Clone and Build with CMake
         run: |
+          # 1. Clone the repository
           git clone --recursive https://github.com/cactus-compute/cactus.git
           cd cactus
-          echo "--- Root directory contents ---"
-          ls -la
-          echo "--- Searching for build.sh ---"
-          find . -name "build.sh" -type f
-          echo "--- Searching for Android CMakeLists.txt ---"
-          find . -name "CMakeLists.txt" -type f | grep -i android || true
 
-      - name: Build Cactus (Auto-detect script)
-        run: |
-          cd cactus
+          # 2. Point CMake to the 'android' directory (where CMakeLists.txt lives)
           export ANDROID_NDK_HOME=$ANDROID_HOME/ndk/26.1.10909125
           
-          if [ -f "android/build.sh" ]; then
-            echo "Found android/build.sh, building..."
-            bash android/build.sh
-          elif [ -f "cactus-engine/build.sh" ]; then
-            echo "Found cactus-engine/build.sh, building..."
-            bash cactus-engine/build.sh
-          elif [ -f "scripts/android/build.sh" ]; then
-            echo "Found scripts/android/build.sh, building..."
-            bash scripts/android/build.sh
-          else
-            echo "ERROR: Could not find any Android build script. Please check the repository structure."
-            exit 1
-          fi
+          echo "--- Starting CMake Configuration ---"
+          cmake -B build-android -S android \
+            -DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake \
+            -DANDROID_ABI=arm64-v8a \
+            -DANDROID_PLATFORM=android-26 \
+            -DCMAKE_BUILD_TYPE=Release
+
+          echo "--- Starting Compilation ---"
+          cmake --build build-android --config Release --parallel
 
       - name: Upload Cactus .so Library
         uses: actions/upload-artifact@v4
         with:
           name: cactus-native-lib
-          path: cactus/**/libcactus_engine.so
+          # The output should be libcactus_engine.so
+          path: cactus/build-android/**/*.so
