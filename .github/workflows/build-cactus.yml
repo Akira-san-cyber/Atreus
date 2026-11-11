@@ -29,15 +29,15 @@ jobs:
           cd cactus
           git checkout v2.0.1
           
-          # 2. Setup environment
+          # 2. Setup environment (creates .venv directory)
           source ./setup
           export ANDROID_NDK_HOME=$ANDROID_HOME/ndk/26.1.10909125
 
-          # 3. Run the build command directly from the virtual environment
+          # 3. Run the build command using the correct .venv path
           echo "--- Building Cactus for Android ---"
-          ./venv/bin/cactus build --android
+          ./.venv/bin/cactus build --android
 
-          # 4. Verify the output files exist
+          # 4. Verify output files
           echo "--- Finding generated .so and Kotlin files ---"
           find . -name "libcactus*" -type f
           find . -name "Cactus*.kt" -type f
@@ -46,7 +46,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: cactus-android-lib
-          # Uploads the compiled engine AND the Kotlin wrapper files
           path: |
             cactus/android/libcactus_engine.so
             cactus/**/Cactus.kt
