@@ -22,15 +22,19 @@ jobs:
         run: |
           sdkmanager --install "ndk;26.1.10909125" "cmake;3.22.1"
 
-      - name: Clone and Setup Cactus
+      - name: Clone, Setup, and Build Cactus
         run: |
+          # Clone the repository
           git clone https://github.com/cactus-compute/cactus.git
           cd cactus
+          
+          # Verify the android directory exists before building
+          ls -la android/ || { echo "ERROR: android directory is missing!"; exit 1; }
+          
+          # Setup the environment (installs the CLI)
           source ./setup
-
-      - name: Build Cactus via Official Command
-        run: |
-          cd cactus
+          
+          # Build using the official command
           export ANDROID_NDK_HOME=$ANDROID_HOME/ndk/26.1.10909125
           cactus build --android
 
@@ -38,4 +42,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: cactus-native-lib
-          path: cactus/android/libcactus.so
+          # The output is libcactus_engine.so based on official docs
+          path: cactus/android/libcactus_engine.so
