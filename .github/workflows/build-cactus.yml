@@ -16,59 +16,30 @@ jobs:
         run: |
           sdkmanager --install "ndk;26.1.10909125" "cmake;3.22.1"
 
-      - name: Clone and Inspect Cactus Repo
+      - name: Clone, Setup, and Build Cactus
         run: |
-          # Full clone (no --depth) to ensure all folders are downloaded
+          # 1. Clone the repository
           git clone https://github.com/cactus-compute/cactus.git
           cd cactus
           
-          echo "--- Repo Root ---"
-          pwd
+          # 2. Run the official setup script (creates the .venv)
+          source ./setup
           
-          echo "--- Files to Inspect ---"
-          find . -maxdepth 4 \( -name "CMakeLists.txt" -o -path "*/android/*" -o -name "build.sh" \) -type f
-
-      - name: Build Cactus Safely
-        run: |
-          cd cactus
-          
+          # 3. Set the NDK path and run the official build command
           export ANDROID_NDK_HOME=$ANDROID_HOME/ndk/26.1.10909125
-
-          # 1. Check if the official Android build script exists
-          if [ -f "android/build.sh" ]; then
-            echo "✅ Found android/build.sh. Starting official build..."
-            bash android/build.sh
-          else
-            # 2. Fallback: Find CMakeLists.txt and build directly
-            echo "⚠️ android/build.sh not found. Searching for CMake project..."
-            CMAKE_FILE=$(find . -name "CMakeLists.txt" -type f | head -n 1)
-            
-            if [ -z "$CMAKE_FILE" ]; then
-              echo "❌ ERROR: No CMakeLists.txt found. Upstream layout has changed."
-              exit 1
-            fi
-            
-            CMAKE_DIR=$(dirname "$CMAKE_FILE")
-            echo "Using CMake project at: $CMAKE_DIR"
-            
-            cmake -S "$CMAKE_DIR" -B build-android \
-              -DCMAKE_TOOLCHAIN_FILE="$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake" \
-              -DANDROID_ABI=arm64-v8a \
-              -DANDROID_PLATFORM=android-21 \
-              -DCMAKE_BUILD_TYPE=Release
-            
-            cmake --build build-android --config Release --parallel
-          fi
-
+          echo "--- Building Cactus for Android ---"
+          cactus build --android
+          
+          # 4. Locate the generated .so file
           echo "--- Finding generated .so files ---"
           find . -name "*.so" -type f
 
-      - name: Upload Artifacts
+      - name: Upload Cactus Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: cactus-android-lib
+          # Upload the compiled engine AND the Kotlin wrapper files
           path: |
             cactus/**/*.so
             cactus/**/Cactus.kt
-            cactus/**/CactusCallbacks.kt
-# Safe build with inspection
+# Official Android build
