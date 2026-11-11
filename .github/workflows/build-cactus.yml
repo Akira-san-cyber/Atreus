@@ -22,26 +22,43 @@ jobs:
         run: |
           sdkmanager --install "ndk;26.1.10909125" "cmake;3.22.1"
 
-      - name: Clone and Build Cactus
+      - name: Clone, Verify, and Build Cactus
         run: |
-          # 1. Clone the repository (--depth 1 is faster and more reliable for CI)
-          git clone --depth 1 https://github.com/cactus-compute/cactus.git
+          # 1. Clone with full depth (no --depth 1) to ensure all folders are fetched
+          git clone --recursive https://github.com/cactus-compute/cactus.git
           cd cactus
-          
-          # 2. Go directly into the android folder
-          cd android
-          
-          # 3. Set the NDK path and run the official build script
+
+          # 2. Verify the android folder exists
+          echo "--- Checking for android folder ---"
+          if [ -d "android" ]; then
+            echo "✅ android folder found."
+            ls -la android/
+          else
+            echo "❌ ERROR: android folder is missing! Listing root directory:"
+            ls -la
+            exit 1
+          fi
+
+          # 3. Set NDK path
           export ANDROID_NDK_HOME=$ANDROID_HOME/ndk/26.1.10909125
-          bash build.sh
+
+          # 4. Find and execute the build script from its actual location
+          echo "--- Searching for build.sh ---"
+          BUILD_SCRIPT=$(find . -type f -name "build.sh" | head -1)
           
-          # 4. Copy the compiled .so file to Atreus's jniLibs folder
-          mkdir -p ../../app/src/main/jniLibs/arm64-v8a
-          cp libcactus_engine.so ../../app/src/main/jniLibs/arm64-v8a/
+          if [ -z "$BUILD_SCRIPT" ]; then
+            echo "ERROR: Could not find build.sh anywhere in the repository!"
+            exit 1
+          fi
+          
+          echo "Found build script at: $BUILD_SCRIPT"
+          echo "--- Starting C++ Compilation ---"
+          # Use execdir to run the script inside its own directory
+          find . -name "build.sh" -execdir bash {} \;
 
       - name: Upload Cactus .so Library
         uses: actions/upload-artifact@v4
         with:
           name: cactus-native-lib
-          # This will grab the .so file from Atreus's jniLibs folder
-          path: app/src/main/jniLibs/arm64-v8a/libcactus_engine.so
+          # The output is libcactus_engine.so
+          path: cactus/**/*.so
