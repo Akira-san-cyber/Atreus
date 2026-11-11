@@ -22,37 +22,42 @@ jobs:
         run: |
           sdkmanager --install "ndk;26.1.10909125" "cmake;3.22.1"
 
-      - name: Clone, Setup, and Build Cactus
+      - name: Clone, Find CLI, and Build Cactus
         run: |
-          # 1. Clone and checkout the stable version
+          # 1. Clone and checkout the working version
           git clone https://github.com/cactus-compute/cactus.git
           cd cactus
           git checkout v2.0.1
           
-          # 2. Run setup (creates the virtual environment)
+          # 2. Run setup to install dependencies
           source ./setup
           
-          # 3. Activate the environment (handles both 'venv' and '.venv')
-          if [ -f "venv/bin/activate" ]; then
-            source venv/bin/activate
-          elif [ -f ".venv/bin/activate" ]; then
-            source .venv/bin/activate
+          # 3. Automatically find the 'cactus' executable file
+          echo "--- Searching for Cactus CLI executable ---"
+          CLI_PATH=$(find . -type f -name "cactus" | head -n 1)
+          
+          if [ -z "$CLI_PATH" ]; then
+            echo "❌ ERROR: Could not find the 'cactus' executable anywhere!"
+            exit 1
           fi
+          
+          echo "✅ Found Cactus CLI at: $CLI_PATH"
+          chmod +x "$CLI_PATH"
 
-          # 4. Set NDK path and run the official build command
+          # 4. Set NDK path and build
           export ANDROID_NDK_HOME=$ANDROID_HOME/ndk/26.1.10909125
           echo "--- Building Cactus for Android ---"
-          cactus build --android
+          "$CLI_PATH" build --android
 
-          # 5. Verify the output
-          find . -name "libcactus*" -type f
-          find . -name "Cactus*.kt" -type f
+          # 5. Find the generated files
+          echo "--- Finding generated .so files ---"
+          find . -name "libcactus*.so" -type f
 
       - name: Upload Cactus Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: cactus-android-lib
           path: |
-            cactus/android/libcactus_engine.so
+            cactus/**/libcactus*.so
             cactus/**/Cactus.kt
             cactus/**/CactusCallbacks.kt
