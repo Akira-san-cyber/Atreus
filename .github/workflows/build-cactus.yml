@@ -22,44 +22,40 @@ jobs:
         run: |
           sdkmanager --install "ndk;26.1.10909125" "cmake;3.22.1"
 
-      - name: Clone, Find CLI, and Build Cactus
+      - name: Clone, Find CMake, and Build Cactus
         run: |
           # 1. Clone and checkout the working version
           git clone https://github.com/cactus-compute/cactus.git
           cd cactus
           git checkout v2.0.1
           
-          # 2. Run setup to install dependencies
-          source ./setup
+          # 2. Find the exact folder where CMakeLists.txt is located
+          CMAKE_DIR=$(find . -name "CMakeLists.txt" -not -path "./.git/*" | head -1 | xargs dirname)
+          echo "✅ Found CMakeLists.txt in: $CMAKE_DIR"
           
+          # 3. Set NDK path and build directly with CMake
           export ANDROID_NDK_HOME=$ANDROID_HOME/ndk/26.1.10909125
           
-          echo "--- Attempting to run Cactus Build ---"
+          echo "--- Starting CMake Configuration ---"
+          cmake -B build-android -S "$CMAKE_DIR" \
+            -DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake \
+            -DANDROID_ABI=arm64-v8a \
+            -DANDROID_PLATFORM=android-24 \
+            -DCMAKE_BUILD_TYPE=Release
+            
+          echo "--- Starting Compilation ---"
+          cmake --build build-android --config Release --parallel
           
-          # 3. Try every possible way to run the CLI
-          if command -v cactus &> /dev/null; then
-            echo "✅ Found 'cactus' on system PATH"
-            cactus build --android
-          elif [ -f ".venv/bin/cactus" ]; then
-            echo "✅ Found 'cactus' in .venv/bin/"
-            ./.venv/bin/cactus build --android
-          elif [ -f "venv/bin/cactus" ]; then
-            echo "✅ Found 'cactus' in venv/bin/"
-            ./venv/bin/cactus build --android
-          else
-            echo "⚠️ Could not find 'cactus' executable. Trying Python module fallback..."
-            python -m cactus build --android
-          fi
-
-          # 4. Find the generated files
-          echo "--- Finding generated .so files ---"
-          find . -name "libcactus*.so" -type f
+          # 4. Verify the .so file was created
+          echo "--- Verifying compiled library ---"
+          find . -name "*.so" -type f
 
       - name: Upload Cactus Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: cactus-android-lib
           path: |
-            cactus/**/libcactus*.so
+            cactus/**/*.so
             cactus/**/Cactus.kt
             cactus/**/CactusCallbacks.kt
+# Forced update
