@@ -24,32 +24,38 @@ jobs:
 
       - name: Clone, Checkout v2.0.1, and Build Cactus
         run: |
-          # 1. Clone the repository
+          # 1. Clone and checkout the working version
           git clone https://github.com/cactus-compute/cactus.git
           cd cactus
-          
-          # 2. Checkout the working release
           git checkout v2.0.1
           
-          # 3. Setup the environment and build
+          # 2. Setup environment
           source ./setup
           export ANDROID_NDK_HOME=$ANDROID_HOME/ndk/26.1.10909125
-          echo "--- Building Cactus for Android ---"
-          cactus build --android
 
-      - name: Locate Output Files
-        run: |
-          cd cactus
-          echo "--- Generated .so file ---"
-          ls -la android/libcactus_engine.so
-          echo "--- Kotlin wrapper files ---"
+          # 3. Find the CLI executable (ignoring the .git folder)
+          CLI=$(find . -path ./.git -prune -o -type f -name "cactus" -print | head -n 1)
+          echo "Cactus CLI found at: $CLI"
+          if [ -z "$CLI" ]; then
+            echo "Cactus CLI not found in the repository!"
+            exit 1
+          fi
+          chmod +x "$CLI"
+
+          # 4. Run the build command directly
+          echo "--- Building Cactus for Android ---"
+          "$CLI" build --android
+
+          # 5. Verify the output files exist
+          echo "--- Finding generated .so and Kotlin files ---"
+          find . -name "libcactus*" -type f
           find . -name "Cactus*.kt" -type f
 
       - name: Upload Cactus Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: cactus-android-lib
-          # This grabs the compiled library AND the required Kotlin files
+          # Uploads the compiled engine AND the Kotlin wrapper files
           path: |
             cactus/android/libcactus_engine.so
             cactus/**/Cactus.kt
