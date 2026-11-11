@@ -18,19 +18,21 @@ jobs:
 
       - name: Clone, Setup, and Build Cactus
         run: |
-          # 1. Clone the repository
           git clone https://github.com/cactus-compute/cactus.git
           cd cactus
           
-          # 2. Run the official setup script (creates the .venv)
+          # Run the setup script to create the environment
           source ./setup
           
-          # 3. Set the NDK path and run the official build command
           export ANDROID_NDK_HOME=$ANDROID_HOME/ndk/26.1.10909125
-          echo "--- Building Cactus for Android ---"
-          cactus build --android
           
-          # 4. Locate the generated .so file
+          echo "--- Checking where cactus is installed ---"
+          ls -la .venv/bin/ | grep cactus || true
+          
+          echo "--- Running build via explicit venv path ---"
+          # Use the exact path to the executable
+          ./.venv/bin/cactus build --android
+          
           echo "--- Finding generated .so files ---"
           find . -name "*.so" -type f
 
@@ -38,8 +40,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: cactus-android-lib
-          # Upload the compiled engine AND the Kotlin wrapper files
           path: |
             cactus/**/*.so
             cactus/**/Cactus.kt
-# Official Android build
+# Final CI fix
