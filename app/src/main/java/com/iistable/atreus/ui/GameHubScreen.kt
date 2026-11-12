@@ -1,11 +1,7 @@
 package com.iistable.atreus.ui
 
-import android.content.Context
 import android.content.Intent
-import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
-import android.graphics.drawable.Drawable
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -13,86 +9,105 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import androidx.core.graphics.drawable.toBitmap
-import androidx.compose.foundation.Image
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
-
-data class InstalledApp(val name: String, val packageName: String, val icon: Drawable)
 
 @Composable
 fun GameHubScreen() {
     val context = LocalContext.current
-    var apps by remember { mutableStateOf<List<InstalledApp>>(emptyList()) }
-    var isLoading by remember { mutableStateOf(true) }
+    var games by remember { mutableStateOf<List<Pair<String, String>>>(emptyList()) }
+    var aiTask by remember { mutableStateOf("Play, Start, Claim") }
+    var manualPackage by remember { mutableStateOf("") }
+    var showAddDialog by remember { mutableStateOf(false) }
 
-    LaunchedEffect(Unit) {
-        withContext(Dispatchers.IO) {
-            apps = getInstalledApps(context)
-            isLoading = false
-        }
+    // Scan for apps (Relaxed filter to find more games)
+    fun scanGames() {
+        val pm = context.packageManager
+        val installedApps = pm.getInstalledApplications(PackageManager.GET_META_DATA)
+        games = installedApps
+            .filter { 
+                val launchIntent = pm.getLaunchIntentForPackage(it.packageName)
+                // Show all user-installed apps, not just flagged games
+                (it.flags and android.content.pm.ApplicationInfo.FLAG_SYSTEM) == 0 && launchIntent != null
+            }
+            .map { appInfo -> Pair(appInfo.loadLabel(pm).toString(), appInfo.packageName) }
+            .sortedBy { it.first }
+    }
+
+    LaunchedEffect(Unit) { scanGames() }
+
+    if (showAddDialog) {
+        AlertDialog(
+            onDismissRequest = { showAddDialog = false },
+            title = { Text("Add Game Manually") },
+            text = { 
+                Column {
+                    Text("Enter the package name (e.g., com.tencent.ig for PUBG):")
+                    Spacer(Modifier.height(8.dp))
+                    OutlinedTextField(value = manualPackage, onValueChange = { manualPackage = it }, singleLine = true)
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    if (manualPackage.isNotBlank()) {
+                        try {
+                            val appInfo = context.packageManager.getApplicationInfo(manualPackage.trim(), 0)
+                            val name = context.packageManager.getApplicationLabel(appInfo).toString()
+                            games = games + Pair(name, manualPackage.trim())
+                            showAddDialog = false
+                            manualPackage = ""
+                        } catch (e: Exception) {
+                            // Package not found
+                        }
+                    }
+                }) { Text("Add") }
+            },
+            dismissButton = { TextButton(onClick = { showAddDialog = false }) { Text("Cancel") } }
+        )
     }
 
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
-        Text("🎮 Atreus Game Launcher", style = MaterialTheme.typography.headlineSmall)
-        Text("Launch any game. Atreus will auto-tap for you.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
-        Spacer(Modifier.height(16.dp))
+        Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Text("🎮 Game Hub (Auto-Play)", style = MaterialTheme.typography.headlineSmall)
+            IconButton(onClick = { showAddDialog = true }) {
+                Text("➕", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.primary)
+            }
+        }
+        
+        Text("Type what Atreus should click, then tap a game to launch.", style = MaterialTheme.typography.bodySmall)
+        
+        Spacer(modifier = Modifier.height(8.dp))
+        
+        OutlinedTextField(
+            value = aiTask,
+            onValueChange = { aiTask = it },
+            label = { Text("AI Click Targets (comma separated)") },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true
+        )
 
-        if (isLoading) {
-            CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
+        Spacer(modifier = Modifier.height(16.dp))
+        
+        if (games.isEmpty()) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text("No installed apps found. Tap ➕ to add manually.")
+            }
         } else {
             LazyColumn {
-                items(apps) { app ->
-                    Card(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth().padding(12.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Image(
-                                    bitmap = app.icon.toBitmap(48, 48).asImageBitmap(),
-                                    contentDescription = null,
-                                    modifier = Modifier.size(48.dp)
-                                )
-                                Spacer(Modifier.width(16.dp))
-                                Text(app.name, style = MaterialTheme.typography.titleMedium)
-                            }
-                            Button(onClick = {
-                                // Launch the game
-                                val intent = context.packageManager.getLaunchIntentForPackage(app.packageName)
-                                intent?.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                                if (intent != null) context.startActivity(intent)
-                            }) {
-                                Text("Play")
-                            }
+                items(games) { (name, packageName) ->
+                    Card(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                        onClick = {
+                            val prefs = context.getSharedPreferences("atreus_automation", android.content.Context.MODE_PRIVATE)
+                            prefs.edit().putString("ai_task", aiTask).apply()
+                            val intent = context.packageManager.getLaunchIntentForPackage(packageName)
+                            if (intent != null) context.startActivity(intent)
                         }
+                    ) {
+                        Text("$name\n$packageName", modifier = Modifier.padding(12.dp))
                     }
                 }
             }
         }
     }
-}
-
-fun getInstalledApps(context: Context): List<InstalledApp> {
-    val pm = context.packageManager
-    val mainIntent = Intent(Intent.ACTION_MAIN, null)
-    mainIntent.addCategory(Intent.CATEGORY_LAUNCHER)
-    
-    val resolvedInfos = pm.queryIntentActivities(mainIntent, 0)
-    val list = mutableListOf<InstalledApp>()
-    
-    for (info in resolvedInfos) {
-        val packageName = info.activityInfo.packageName
-        // Exclude system apps to make the list clean
-        if ((info.activityInfo.applicationInfo.flags and ApplicationInfo.FLAG_SYSTEM) == 0) {
-            val appName = info.loadLabel(pm).toString()
-            val icon = info.loadIcon(pm)
-            list.add(InstalledApp(appName, packageName, icon))
-        }
-    }
-    return list.sortedBy { it.name }
 }

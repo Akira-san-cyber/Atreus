@@ -10,6 +10,7 @@ import androidx.fragment.app.FragmentActivity
 class MainActivity : FragmentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        com.cactus.CactusContextInitializer.initialize(this)
         val app = application as AtreusApp
         setContent { 
             AtreusTheme { 

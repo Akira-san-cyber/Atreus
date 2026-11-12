@@ -37,3 +37,7 @@ google-services.json
 *.zip
 android-sdk/
 jdk17/
+*.apk
+*.zip
+android-sdk/
+jdk17/
